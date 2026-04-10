@@ -12,7 +12,8 @@ const Dashboard = () => {
   // Fetch papers on load
   const loadPapers = async () => {
       try {
-          const res = await axios.get('http://localhost:5000/api/papers');
+          const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+          const res = await axios.get(`${API_BASE_URL}/api/papers`);
           setPapers(res.data);
       } catch (err) {
           console.error("Failed to load papers:", err);
@@ -33,7 +34,8 @@ const Dashboard = () => {
     formData.append('document', file);
 
     try {
-        await axios.post('http://localhost:5000/api/upload', formData, {
+        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        await axios.post(`${API_BASE_URL}/api/upload`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
         await loadPapers();
@@ -52,7 +54,8 @@ const Dashboard = () => {
     setUploadMode('none');
 
     try {
-        await axios.post('http://localhost:5000/api/upload', { url: urlInput });
+        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        await axios.post(`${API_BASE_URL}/api/upload`, { url: urlInput });
         setUrlInput('');
         await loadPapers();
     } catch (err) {
