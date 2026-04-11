@@ -26,7 +26,7 @@ const chunkText = (text, chunkSize = 1000) => {
     return chunks;
 };
 
-const storeEmbeddings = async (text, documentId) => {
+const storeEmbeddings = async (text, documentId, userId) => {
     try {
         if (!index) await initializeVectorStore();
 
@@ -46,6 +46,7 @@ const storeEmbeddings = async (text, documentId) => {
                  values: embedding,
                  metadata: {
                      documentId: documentId.toString(),
+                     userId: userId.toString(),
                      text: chunk
                  }
              });
@@ -66,7 +67,7 @@ const storeEmbeddings = async (text, documentId) => {
     }
 };
 
-const queryVectorStore = async (queryText, topK = 5) => {
+const queryVectorStore = async (queryText, userId, topK = 5) => {
     try {
         if (!index) await initializeVectorStore();
         
@@ -77,6 +78,7 @@ const queryVectorStore = async (queryText, topK = 5) => {
         const queryResponse = await index.query({
             vector: queryVector,
             topK: topK,
+            filter: { userId: userId.toString() },
             includeMetadata: true
         });
         
@@ -88,8 +90,23 @@ const queryVectorStore = async (queryText, topK = 5) => {
     }
 };
 
+const getStats = async () => {
+    try {
+        if (!index) await initializeVectorStore();
+        const stats = await index.describeIndexStats();
+        return {
+            dimensions: stats.dimension || 1536,
+            totalVectors: stats.totalRecordCount || 0
+        };
+    } catch (error) {
+        console.error('Error fetching vector stats:', error);
+        return { dimensions: 1536, totalVectors: 0 };
+    }
+};
+
 module.exports = {
    initializeVectorStore,
    storeEmbeddings,
-   queryVectorStore
+   queryVectorStore,
+   getStats
 };

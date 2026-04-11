@@ -1,22 +1,23 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Upload, FileText, Activity, Database, ArrowRight, Link as LinkIcon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { FileText, Database, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 
 const Dashboard = () => {
-  const [isUploading, setIsUploading] = useState(false);
   const [papers, setPapers] = useState([]);
-  const [uploadMode, setUploadMode] = useState('none'); // 'none', 'file', 'url'
-  const [urlInput, setUrlInput] = useState('');
-  const fileInputRef = useRef(null);
+  const [vectorCount, setVectorCount] = useState(0);
 
   // Fetch papers on load
   const loadPapers = async () => {
       try {
           const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-          const res = await axios.get(`${API_BASE_URL}/api/papers`);
-          setPapers(res.data);
+          const [papersRes, statusRes] = await Promise.all([
+              axios.get(`${API_BASE_URL}/api/papers`),
+              axios.get(`${API_BASE_URL}/api/status`)
+          ]);
+          setPapers(papersRes.data);
+          setVectorCount(statusRes.data.vector.totalVectors);
       } catch (err) {
-          console.error("Failed to load papers:", err);
+          console.error("Failed to load dashboard data:", err);
       }
   };
 
@@ -24,171 +25,77 @@ const Dashboard = () => {
       loadPapers();
   }, []);
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    setUploadMode('none');
-    const formData = new FormData();
-    formData.append('document', file);
-
-    try {
-        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        await axios.post(`${API_BASE_URL}/api/upload`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        await loadPapers();
-    } catch (err) {
-        console.error("Upload failed", err);
-    } finally {
-        setIsUploading(false);
-    }
-  };
-
-  const handleUrlUpload = async (e) => {
-    e.preventDefault();
-    if (!urlInput.trim()) return;
-
-    setIsUploading(true);
-    setUploadMode('none');
-
-    try {
-        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        await axios.post(`${API_BASE_URL}/api/upload`, { url: urlInput });
-        setUrlInput('');
-        await loadPapers();
-    } catch (err) {
-        console.error("URL Ingestion failed", err);
-    } finally {
-        setIsUploading(false);
-    }
-  };
-
   return (
     <div className="p-4 md:p-10 w-full mx-auto space-y-6 md:space-y-10 fade-in">
       
       {/* Header section */}
-      <div className="flex flex-col md:flex-row md:justify-between items-start md:items-end border-b border-zinc-800 pb-4 md:pb-6 relative space-y-4 md:space-y-0">
-        <div>
-          <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-zinc-100 mb-1">Research Overview</h1>
-          <p className="text-xs md:text-sm text-zinc-400">Library, insights, and extracted literature data.</p>
-        </div>
-        
-        <div className="relative flex space-x-2">
-           {isUploading && (
-              <div className="flex items-center space-x-2 text-zinc-400 mr-4">
-                 <Activity className="animate-spin" size={16} />
-                 <span className="text-sm">Processing & Embedding...</span>
-              </div>
-           )}
-
-           <button 
-             onClick={() => setUploadMode(uploadMode === 'url' ? 'none' : 'url')}
-             disabled={isUploading}
-             className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-4 py-2.5 rounded text-sm font-medium flex items-center space-x-2 transition-colors disabled:opacity-50"
-           >
-             <LinkIcon size={16} />
-             <span>Crawl URL</span>
-           </button>
-           
-           <button 
-             onClick={() => {
-                 setUploadMode('file');
-                 fileInputRef.current?.click();
-             }}
-             disabled={isUploading}
-             className="bg-zinc-100 hover:bg-white text-black px-4 py-2.5 rounded text-sm font-medium flex items-center space-x-2 transition-colors disabled:opacity-50"
-           >
-             <Upload size={16} />
-             <span>Upload File</span>
-           </button>
-           <input 
-              type="file" 
-              ref={fileInputRef} 
-              style={{ display: 'none' }} 
-              accept="application/pdf"
-              onChange={handleFileUpload}
-           />
-        </div>
-
-        {uploadMode === 'url' && (
-           <div className="absolute top-full right-0 mt-2 bg-[#111111] border border-zinc-700 p-4 rounded-lg shadow-xl z-20 w-80">
-              <form onSubmit={handleUrlUpload} className="flex flex-col space-y-3">
-                 <label className="text-xs text-zinc-400 font-medium">Enter Article or PDF URL</label>
-                 <input 
-                    type="url"
-                    value={urlInput}
-                    onChange={(e) => setUrlInput(e.target.value)}
-                    required
-                    placeholder="https://..."
-                    className="w-full bg-[#0a0a0a] text-zinc-200 text-sm px-3 py-2 border border-zinc-700 rounded focus:border-zinc-500 focus:outline-none"
-                 />
-                 <button type="submit" className="bg-zinc-100 text-black px-4 py-2 rounded text-sm font-medium">
-                    Ingest URL
-                 </button>
-              </form>
-           </div>
-        )}
+      <div className="flex flex-col border-b theme-border pb-6 relative space-y-2">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight theme-text">Research Library</h1>
+        <p className="text-sm md:text-base theme-text-muted">Database of all successfully ingested documents and their extracted metadata.</p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="glass-card rounded-lg p-5 flex flex-col justify-between h-32">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="glass-card rounded-2xl p-6 flex flex-col justify-between h-40 hover:-translate-y-1 transition-transform">
           <div className="flex justify-between items-start">
-            <h3 className="text-zinc-400 text-sm font-medium">Total Documents</h3>
-            <FileText size={18} className="text-zinc-500" />
+            <h3 className="theme-text-muted text-base font-bold">Total Documents</h3>
+            <FileText size={22} className="text-blue-500" />
           </div>
-          <span className="text-3xl font-semibold tracking-tight">{papers.length}</span>
+          <span className="text-4xl font-extrabold tracking-tight theme-text">{papers.length}</span>
         </div>
         
-        <div className="glass-card rounded-lg p-5 flex flex-col justify-between h-32">
+        <div className="glass-card rounded-2xl p-6 flex flex-col justify-between h-40 hover:-translate-y-1 transition-transform">
           <div className="flex justify-between items-start">
-            <h3 className="text-zinc-400 text-sm font-medium">Extracted Concepts</h3>
-            <Database size={18} className="text-zinc-500" />
+            <h3 className="theme-text-muted text-base font-bold">Extracted Concepts</h3>
+            <Database size={22} className="text-purple-500" />
           </div>
-          <span className="text-3xl font-semibold tracking-tight">{papers.reduce((acc, p) => acc + (p.keyPoints?.length || 0), 0) || '0'}</span>
+          <span className="text-4xl font-extrabold tracking-tight theme-text">{papers.reduce((acc, p) => acc + (p.keyPoints?.length || 0), 0) || '0'}</span>
         </div>
 
-        <div className="glass-card rounded-lg p-5 flex flex-col justify-between h-32 border-l-2 border-l-zinc-300">
+        <div className="glass-card rounded-2xl p-6 flex flex-col justify-between h-40 border-l-4 border-l-blue-500 hover:-translate-y-1 transition-transform">
           <div className="flex justify-between items-start">
-            <h3 className="text-zinc-200 text-sm font-medium">Indexed Memory</h3>
+            <h3 className="theme-text text-base font-bold">Indexed Memory</h3>
           </div>
           <div>
-            <span className="text-3xl font-semibold tracking-tight">Active</span>
-            <p className="text-zinc-500 text-xs mt-1">Pinecone Vector DB RAG</p>
+            <span className="text-4xl font-extrabold tracking-tight theme-text text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">{vectorCount.toLocaleString()}</span>
+            <p className="theme-text-muted text-sm mt-1 font-medium">Synced Context Vectors</p>
           </div>
         </div>
       </div>
 
       {/* Recent Papers Area */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-           <h2 className="text-base font-medium text-zinc-200">Recent Documents</h2>
-           <button className="text-xs text-zinc-400 hover:text-zinc-100 flex items-center space-x-1">
+        <div className="flex items-center justify-between mb-6 border-b theme-border pb-2">
+           <h2 className="text-lg font-bold theme-text">Recent Documents</h2>
+           <button className="text-sm theme-text-muted hover:theme-text flex items-center space-x-1 font-semibold transition-colors">
              <span>View All</span>
-             <ArrowRight size={14} />
+             <ArrowRight size={18} />
            </button>
         </div>
         
-        <div className="glass-card rounded-lg overflow-x-auto">
-          <table className="w-full text-left text-sm text-zinc-300 min-w-[600px]">
-            <thead className="bg-[#0a0a0a] text-xs font-medium text-zinc-400 border-b border-zinc-800">
+        <div className="glass-card rounded-xl overflow-x-auto shadow-sm">
+          <table className="w-full text-left text-base theme-text min-w-[700px]">
+            <thead className="theme-surface text-sm font-bold theme-text-muted border-b theme-border uppercase tracking-widest">
               <tr>
-                <th className="px-5 py-3 font-medium">Document Title</th>
-                <th className="px-5 py-3 font-medium">Authors</th>
-                <th className="px-5 py-3 font-medium text-right">Date Added</th>
+                <th className="px-6 py-4">Document Title</th>
+                <th className="px-6 py-4">Authors</th>
+                <th className="px-6 py-4 text-right">Date Added</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800">
+            <tbody className="divide-y theme-border">
               {papers.length === 0 && (
-                  <tr><td colSpan="3" className="px-5 py-8 text-center text-zinc-600 font-medium">No documents uploaded yet.</td></tr>
+                  <tr><td colSpan="3" className="px-6 py-10 text-center theme-text-muted font-medium text-lg">No documents uploaded yet.</td></tr>
               )}
               {papers.map((paper) => (
-                <tr key={paper._id} className="hover:bg-[#111111] transition-colors cursor-pointer text-zinc-200">
-                  <td className="px-5 py-4 font-medium">{paper.title}</td>
-                  <td className="px-5 py-4 text-zinc-500">{paper.authors.join(', ')}</td>
-                  <td className="px-5 py-4 text-zinc-500 text-right">{new Date(paper.uploadDate).toLocaleDateString()}</td>
+                <tr key={paper._id} className="hover:theme-surface-hover transition-colors cursor-pointer">
+                  <td className="px-6 py-5 font-bold flex items-center space-x-3">
+                      <span>{paper.title}</span>
+                      {paper.status !== 'Complete' && paper.status !== 'Failed' && (
+                         <span className="bg-blue-500/10 text-blue-500 border border-blue-500/20 text-xs px-2.5 py-1 rounded-full uppercase tracking-wider font-bold">{paper.status || 'Processing'}</span>
+                      )}
+                  </td>
+                  <td className="px-6 py-5 theme-text-muted font-medium">{paper.authors.join(', ')}</td>
+                  <td className="px-6 py-5 theme-text-muted text-right font-medium">{new Date(paper.uploadDate).toLocaleDateString()}</td>
                 </tr>
               ))}
             </tbody>

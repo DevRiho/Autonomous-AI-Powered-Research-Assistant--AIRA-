@@ -2,8 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { Network, ZoomIn, ZoomOut, Maximize, RefreshCcw } from 'lucide-react';
 import axios from 'axios';
+import { io } from 'socket.io-client';
 
-const KnowledgeGraph = () => {
+const KnowledgeGraph = ({ highlightedNodes = [] }) => {
   const svgRef = useRef(null);
   const wrapperRef = useRef(null);
   const [isSimulating, setIsSimulating] = useState(true);
@@ -21,11 +22,15 @@ const KnowledgeGraph = () => {
               group: n.type === 'paper' ? 1 : n.type === 'author' ? 2 : 3
           }));
           
-          const formattedLinks = res.data.links.map(l => ({
-              source: l.source,
-              target: l.target,
-              value: 2
-          }));
+          const nodeIds = new Set(formattedNodes.map(n => n.id));
+
+          const formattedLinks = res.data.links
+              .filter(l => nodeIds.has(l.source) && nodeIds.has(l.target))
+              .map(l => ({
+                  source: l.source,
+                  target: l.target,
+                  value: 2
+              }));
 
           // Fallback if empty database
           if (formattedNodes.length === 0) {
@@ -46,6 +51,14 @@ const KnowledgeGraph = () => {
 
   useEffect(() => {
      loadGraphData();
+     
+     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+     const socket = io(API_BASE_URL);
+     socket.on('job:complete', () => {
+         loadGraphData();
+     });
+     
+     return () => socket.disconnect();
   }, []);
 
   useEffect(() => {
@@ -84,10 +97,11 @@ const KnowledgeGraph = () => {
       .selectAll('circle')
       .data(data.nodes)
       .enter().append('circle')
-      .attr('r', 8)
-      .attr('fill', d => d.group === 1 ? '#ffffff' : d.group === 2 ? '#a1a1aa' : '#52525b')
-      .attr('stroke', '#18181b')
-      .attr('stroke-width', 3)
+      .attr('r', d => highlightedNodes.includes(d.id) ? 12 : 8)
+      .attr('fill', d => highlightedNodes.includes(d.id) ? '#3b82f6' : d.group === 1 ? '#ffffff' : d.group === 2 ? '#a1a1aa' : '#52525b')
+      .attr('stroke', d => highlightedNodes.includes(d.id) ? '#60a5fa' : '#18181b')
+      .attr('stroke-width', d => highlightedNodes.includes(d.id) ? 4 : 3)
+      .attr('class', d => highlightedNodes.includes(d.id) ? 'animate-pulse' : '')
       .call(drag(simulation));
 
     // Labels
@@ -96,8 +110,9 @@ const KnowledgeGraph = () => {
       .data(data.nodes)
       .enter().append('text')
       .text(d => d.label)
-      .attr('font-size', 11)
-      .attr('fill', '#a1a1aa')
+      .attr('font-size', d => highlightedNodes.includes(d.id) ? 13 : 11)
+      .attr('fill', d => highlightedNodes.includes(d.id) ? '#ffffff' : '#a1a1aa')
+      .attr('font-weight', d => highlightedNodes.includes(d.id) ? 'bold' : 'normal')
       .attr('font-family', 'Inter, sans-serif')
       .attr('dx', 12)
       .attr('dy', 4);
@@ -118,7 +133,7 @@ const KnowledgeGraph = () => {
         .attr('y', d => d.y);
     });
 
-  }, [data]);
+  }, [data, highlightedNodes]);
 
   function drag(simulation) {
     function dragstarted(event, d) {

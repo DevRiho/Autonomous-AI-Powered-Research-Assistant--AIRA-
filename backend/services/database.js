@@ -10,7 +10,14 @@ const connectDB = async () => {
     }
 };
 
+const UserSchema = new mongoose.Schema({
+   email: { type: String, required: true, unique: true },
+   password: { type: String, required: true },
+   createdAt: { type: Date, default: Date.now }
+});
+
 const PaperSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     title: { type: String, required: true },
     authors: [String],
     abstract: String,
@@ -18,10 +25,12 @@ const PaperSchema = new mongoose.Schema({
     summary: String, // AI Generated summary
     keyPoints: [String], // AI Generated bullet points
     knowledgeGraphExtracted: { type: Boolean, default: false },
+    status: { type: String, default: 'Queued' },
     uploadDate: { type: Date, default: Date.now },
 });
 
 const GraphNodeSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     id: String, // Represents concept or paper
     label: String,
     type: String, // 'paper', 'concept', 'author'
@@ -29,6 +38,7 @@ const GraphNodeSchema = new mongoose.Schema({
 });
 
 const GraphEdgeSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     source: String, // node id
     target: String, // node id
     label: String, // relationship type
@@ -39,4 +49,20 @@ const Paper = mongoose.model('Paper', PaperSchema);
 const GraphNode = mongoose.model('GraphNode', GraphNodeSchema);
 const GraphEdge = mongoose.model('GraphEdge', GraphEdgeSchema);
 
-module.exports = { connectDB, Paper, GraphNode, GraphEdge };
+const ChatSessionSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    title: { type: String, default: 'New Conversation' },
+    messages: [{
+        id: String,
+        role: String,
+        text: String,
+        type: { type: String, default: 'standard' }
+    }],
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+});
+
+const ChatSession = mongoose.model('ChatSession', ChatSessionSchema);
+const User = mongoose.model('User', UserSchema);
+
+module.exports = { connectDB, Paper, GraphNode, GraphEdge, ChatSession, User };
