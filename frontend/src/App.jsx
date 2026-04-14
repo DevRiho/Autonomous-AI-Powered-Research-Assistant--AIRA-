@@ -6,6 +6,8 @@ import KnowledgeGraph from './pages/KnowledgeGraph';
 import Chat from './pages/Chat';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Verify from './pages/Verify';
+import Onboarding from './pages/Onboarding';
 import AgentContextPanel from './components/AgentContextPanel';
 import { AuthContext } from './context/AuthContext';
 import './index.css';
@@ -13,7 +15,11 @@ import './index.css';
 const ProtectedRoute = ({ children }) => {
     const { user, loading } = useContext(AuthContext);
     if (loading) return <div className="h-screen w-screen flex items-center justify-center bg-[#0a0a0a] text-white">Loading...</div>;
-    return user ? children : <Navigate to="/login" />;
+    
+    if (!user) return <Navigate to="/login" />;
+    if (!user.onboarded) return <Navigate to="/onboarding" />;
+    
+    return children;
 };
 
 function App() {
@@ -31,6 +37,8 @@ function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/verify" element={<Verify />} />
+              <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
               <Route path="/graph" element={<ProtectedRoute><KnowledgeGraph /></ProtectedRoute>} />
               <Route path="/library" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

@@ -36,18 +36,32 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('user', JSON.stringify(res.data));
             return { success: true };
         } catch (error) {
-            return { success: false, error: error.response?.data?.error || 'Login failed' };
+            return { 
+                success: false, 
+                error: error.response?.data?.error || 'Login failed',
+                requiresVerification: error.response?.data?.requiresVerification
+            };
         }
     };
 
     const register = async (email, password) => {
         try {
             const res = await axios.post('http://localhost:5000/api/auth/register', { email, password });
+            // Do not setting user state here because they need to verify
+            return { success: true, requiresVerification: true };
+        } catch (error) {
+            return { success: false, error: error.response?.data?.error || 'Registration failed' };
+        }
+    };
+
+    const verifyEmail = async (email, code) => {
+        try {
+            const res = await axios.post('http://localhost:5000/api/auth/verify', { email, code });
             setUser(res.data);
             localStorage.setItem('user', JSON.stringify(res.data));
             return { success: true };
         } catch (error) {
-            return { success: false, error: error.response?.data?.error || 'Registration failed' };
+            return { success: false, error: error.response?.data?.error || 'Verification failed. Incorrect code.' };
         }
     };
 
@@ -56,8 +70,19 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('user');
     };
 
+    const updateProfile = async (fullName, interests) => {
+        try {
+            const res = await axios.put('http://localhost:5000/api/auth/profile', { fullName, interests });
+            setUser(res.data);
+            localStorage.setItem('user', JSON.stringify(res.data));
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.response?.data?.error || 'Profile update failed' };
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, register, verifyEmail, logout, updateProfile, loading }}>
             {children}
         </AuthContext.Provider>
     );

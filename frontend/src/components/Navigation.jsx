@@ -1,12 +1,26 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 import { LayoutDashboard, Network, MessageSquare, BrainCircuit, Sun, Moon, MessageCircle } from 'lucide-react';
 import axios from 'axios';
 
 const Navigation = () => {
   const location = useLocation();
+  const { user, logout } = useContext(AuthContext);
   const [isDark, setIsDark] = useState(true);
   const [chatHistory, setChatHistory] = useState([]);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+     const handleClickOutside = (event) => {
+         if (menuRef.current && !menuRef.current.contains(event.target)) {
+             setShowUserMenu(false);
+         }
+     };
+     document.addEventListener("mousedown", handleClickOutside);
+     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -48,6 +62,8 @@ const Navigation = () => {
     { path: '/graph', name: 'Knowledge Graph', icon: Network },
     { path: '/library', name: 'Library', icon: LayoutDashboard },
   ];
+
+  const initials = user?.fullName ? user.fullName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : (user?.email?.charAt(0).toUpperCase() || 'U');
 
   return (
     <div className="w-full md:w-64 border-t md:border-t-0 md:border-r theme-border theme-surface flex flex-row md:flex-col h-16 md:h-full z-20 order-last md:order-first shrink-0 shadow-lg md:shadow-none">
@@ -112,14 +128,40 @@ const Navigation = () => {
       </nav>
 
       {/* User Profile */}
-      <div className="hidden md:flex p-5 border-t theme-border theme-surface items-center space-x-3">
-        <div className="w-10 h-10 rounded-full theme-button flex items-center justify-center text-sm font-bold shadow-inner">
-          TA
-        </div>
-        <div className="flex-1 overflow-hidden">
-          <p className="font-semibold theme-text text-sm truncate">Timothy Abejoye</p>
-          <p className="theme-text-muted text-xs truncate">Research Workspace</p>
-        </div>
+      <div className="hidden md:block relative pb-4 px-3" ref={menuRef}>
+        {showUserMenu && (
+          <div className="absolute bottom-full left-0 mb-2 w-[calc(100%-24px)] mx-3 theme-surface theme-border border rounded-xl shadow-2xl py-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div className="px-4 py-2 border-b theme-border">
+               <p className="text-sm theme-text font-semibold truncate">{user?.fullName || 'User'}</p>
+               <p className="text-xs theme-text-muted truncate mt-0.5">{user?.email}</p>
+            </div>
+            <div className="py-1">
+               <button className="w-full text-left px-4 py-2 text-sm theme-text-muted theme-surface-hover transition-colors">Profile</button>
+               <button className="w-full text-left px-4 py-2 text-sm theme-text-muted theme-surface-hover transition-colors">Settings</button>
+            </div>
+            <div className="py-1 border-t theme-border">
+               <button 
+                  onClick={logout}
+                  className="w-full text-left px-4 py-2 text-sm text-red-500 theme-surface-hover transition-colors"
+               >
+                  Log out
+               </button>
+            </div>
+          </div>
+        )}
+        
+        <button 
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            className="w-full flex items-center space-x-3 p-3 rounded-xl theme-surface-hover transition-all duration-200 text-left group"
+        >
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-sm font-bold text-white shadow-md group-hover:scale-105 transition-transform">
+            {initials}
+          </div>
+          <div className="flex-1 overflow-hidden shrink-0">
+            <p className="font-semibold theme-text text-sm truncate">{user?.fullName || 'User'}</p>
+            <p className="theme-text-muted text-xs truncate transition-colors">Research Workspace</p>
+          </div>
+        </button>
       </div>
     </div>
   );

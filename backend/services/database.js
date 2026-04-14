@@ -11,8 +11,13 @@ const connectDB = async () => {
 };
 
 const UserSchema = new mongoose.Schema({
+   fullName: { type: String, default: '' },
    email: { type: String, required: true, unique: true },
    password: { type: String, required: true },
+   isVerified: { type: Boolean, default: false },
+   verificationCode: { type: String },
+   interests: { type: String, default: '' },
+   onboarded: { type: Boolean, default: false },
    createdAt: { type: Date, default: Date.now }
 });
 

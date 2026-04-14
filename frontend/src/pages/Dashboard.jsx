@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { FileText, Database, ArrowRight } from 'lucide-react';
 import axios from 'axios';
+import { AuthContext } from '../context/AuthContext';
 
 const Dashboard = () => {
   const [papers, setPapers] = useState([]);
   const [vectorCount, setVectorCount] = useState(0);
+  const { user } = useContext(AuthContext);
+  const firstName = user?.fullName ? user.fullName.split(' ')[0] : 'Researcher';
 
   // Fetch papers on load
   const loadPapers = async () => {
@@ -30,8 +33,8 @@ const Dashboard = () => {
       
       {/* Header section */}
       <div className="flex flex-col border-b theme-border pb-6 relative space-y-2">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight theme-text">Research Library</h1>
-        <p className="text-sm md:text-base theme-text-muted">Database of all successfully ingested documents and their extracted metadata.</p>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight theme-text">Welcome back, {firstName} 👋</h1>
+        <p className="text-sm md:text-base theme-text-muted">Here's your research activity and library overview.</p>
       </div>
 
       {/* Stats Cards */}

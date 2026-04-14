@@ -1,42 +1,43 @@
 import { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
-const Register = () => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [errorMsg, setErrorMsg] = useState('');
+const Verify = () => {
+    const [searchParams] = useSearchParams();
+    const email = searchParams.get('email');
+    const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [errorMsg, setErrorMsg] = useState('');
     const [mousePos, setMousePos] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-    const { register, user } = useContext(AuthContext);
+    
+    const { verifyEmail, user } = useContext(AuthContext);
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (user) {
+        if (!email) {
+            navigate('/login');
+        }
+        if (user && user.isVerified) {
             navigate('/');
         }
-    }, [user, navigate]);
+    }, [email, user, navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setErrorMsg('');
         
-        if (password !== confirmPassword) {
-            return setErrorMsg('Passwords do not match');
+        if (code.length !== 6) {
+            return setErrorMsg('Verification code must be 6 digits.');
         }
 
         setLoading(true);
-        const res = await register(email, password);
+        const res = await verifyEmail(email, code);
         setLoading(false);
 
-        if (!res.success) {
+        if (res.success) {
+            navigate('/');
+        } else {
             setErrorMsg(res.error);
-        } else if (res.requiresVerification) {
-            navigate(`/verify?email=${encodeURIComponent(email)}`);
         }
     };
 
@@ -54,63 +55,37 @@ const Register = () => {
             }}
         >
             <div className="login-box">
-                <h2>Create an Account</h2>
-                <p>Sign up to start using AIRA.</p>
+                <h2>Verify Your Email</h2>
+                <p>We've sent a 6-digit code to <strong>{email}</strong>.</p>
                 {errorMsg && <div className="error-flag">{errorMsg}</div>}
+                
                 <form onSubmit={handleSubmit}>
-                    <div className="input-group">
-                        <label>Email</label>
+                    <div className="input-group" style={{ textAlign: 'center' }}>
                         <input 
-                            type="email" 
-                            value={email} 
-                            onChange={(e) => setEmail(e.target.value)} 
+                            type="text" 
+                            value={code} 
+                            onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))} 
+                            placeholder="000000"
                             required 
+                            style={{ 
+                                fontSize: '24px', 
+                                letterSpacing: '8px', 
+                                textAlign: 'center', 
+                                fontWeight: '700',
+                                padding: '16px'
+                            }}
                         />
                     </div>
-                    <div className="input-group">
-                        <label>Password</label>
-                        <div className="password-wrapper">
-                            <input 
-                                type={showPassword ? "text" : "password"} 
-                                value={password} 
-                                onChange={(e) => setPassword(e.target.value)} 
-                                required 
-                            />
-                            <button 
-                                type="button" 
-                                className="eye-btn"
-                                onClick={() => setShowPassword(!showPassword)}
-                            >
-                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                            </button>
-                        </div>
-                    </div>
-                    <div className="input-group">
-                        <label>Confirm Password</label>
-                        <div className="password-wrapper">
-                            <input 
-                                type={showConfirmPassword ? "text" : "password"} 
-                                value={confirmPassword} 
-                                onChange={(e) => setConfirmPassword(e.target.value)} 
-                                required 
-                            />
-                            <button 
-                                type="button" 
-                                className="eye-btn"
-                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                            >
-                                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                            </button>
-                        </div>
-                    </div>
+                    
                     <button type="submit" className="login-btn" disabled={loading}>
-                        {loading ? 'Creating Account...' : 'Sign Up'}
+                        {loading ? 'Verifying...' : 'Complete Verification'}
                     </button>
                 </form>
                 <div className="register-link">
-                    <p>Already have an account? <Link to="/login">Log in</Link></p>
+                    <p>Didn't receive a code? <a href="#" onClick={(e) => { e.preventDefault(); alert("We would resend it here via the backend!"); }}>Resend code</a></p>
                 </div>
             </div>
+
             <style>{`
                 .login-container {
                     /* Forcible Dark Mode Overrides */
@@ -157,7 +132,7 @@ const Register = () => {
                     background-color: var(--glass-bg);
                     backdrop-filter: blur(24px);
                     -webkit-backdrop-filter: blur(24px);
-                    padding: 40px;
+                    padding: 50px 40px;
                     border-radius: 16px;
                     border: 1px solid var(--glass-border);
                     width: 100%;
@@ -184,18 +159,10 @@ const Register = () => {
                     margin-bottom: 30px;
                 }
                 .input-group {
-                    margin-bottom: 20px;
-                }
-                .input-group label {
-                    display: block;
-                    margin-bottom: 8px;
-                    font-size: 14px;
-                    font-weight: 600;
-                    color: var(--text-muted);
+                    margin-bottom: 24px;
                 }
                 .input-group input {
                     width: 100%;
-                    padding: 12px 16px;
                     background-color: var(--bg-main);
                     border: 1px solid var(--border-color);
                     border-radius: 8px;
@@ -209,26 +176,6 @@ const Register = () => {
                     box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
                     background-color: var(--bg-main);
                 }
-                .password-wrapper {
-                    position: relative;
-                    display: flex;
-                    align-items: center;
-                }
-                .eye-btn {
-                    position: absolute;
-                    right: 12px;
-                    background: transparent;
-                    border: none;
-                    color: var(--text-muted);
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 0;
-                }
-                .eye-btn:hover {
-                    color: var(--text-main);
-                }
                 .login-btn {
                     width: 100%;
                     padding: 14px;
@@ -239,10 +186,13 @@ const Register = () => {
                     cursor: pointer;
                     font-size: 16px;
                     font-weight: 700;
-                    margin-top: 10px;
                     transition: transform 0.2s, background-color 0.2s;
                 }
-                .login-btn:hover {
+                .login-btn:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                }
+                .login-btn:hover:not(:disabled) {
                     background-color: #357abd;
                     transform: translateY(-2px);
                 }
@@ -271,4 +221,4 @@ const Register = () => {
     );
 };
 
-export default Register;
+export default Verify;
