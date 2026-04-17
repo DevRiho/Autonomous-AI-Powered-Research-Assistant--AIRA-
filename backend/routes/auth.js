@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { User } = require('../services/database');
 const { protect } = require('../middleware/authMiddleware');
+const sendEmail = require('../services/emailService');
 
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET || 'aira_super_secret_key_123', {
@@ -35,10 +36,26 @@ router.post('/register', async (req, res) => {
         });
 
         if (user) {
-            console.log(`\n\n=========================================`);
-            console.log(`📧 MOCK EMAIL SENT TO: ${user.email}`);
-            console.log(`🔐 VERIFICATION CODE: ${verificationCode}`);
-            console.log(`=========================================\n\n`);
+            const htmlMessage = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0A0A0A; color: #ffffff; padding: 30px; border-radius: 10px; border: 1px solid #333;">
+                    <h2 style="color: #4facfe; text-align: center; margin-bottom: 20px;">Welcome to AIRA!</h2>
+                    <p style="font-size: 16px; color: #e0e0e0; line-height: 1.5;">You are almost ready to start using your Autonomous AI-Powered Research Assistant. Please use the verification code below to complete your registration:</p>
+                    <div style="background-color: #1a1a1a; padding: 20px; border-radius: 8px; text-align: center; margin: 30px 0; border: 1px dashed #4facfe;">
+                        <h1 style="margin: 0; font-size: 40px; letter-spacing: 10px; color: #4facfe;">${verificationCode}</h1>
+                    </div>
+                    <p style="font-size: 14px; color: #888; text-align: center;">If you did not request this, please ignore this email.</p>
+                </div>
+            `;
+
+            try {
+                await sendEmail({
+                    email: user.email,
+                    subject: 'Your AIRA Verification Code',
+                    html: htmlMessage
+                });
+            } catch (error) {
+                console.error("Email setup error, falling back to console:", error.message);
+            }
 
             res.status(201).json({
                 message: 'Registration successful. Please verify your email.',
